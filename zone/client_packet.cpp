@@ -63,6 +63,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/character_stats_record_repository.h"
+#include "Quince.h"
 
 extern QueryServ* QServ;
 extern Zone* zone;
@@ -786,6 +787,12 @@ void Client::CompleteConnect()
 	// if a mob is slightly in the wall or slightly clipping a floor they will be
 	// sent to a succor point
 	SendMobPositions();
+
+	// Quince code to load client state (activate quests for this zone)
+	if (zone)
+	{
+		Quince::Instance().zone_in(this, zone -> GetZoneID());
+	}
 
 	SetLastPositionBeforeBulkUpdate(GetPosition());
 

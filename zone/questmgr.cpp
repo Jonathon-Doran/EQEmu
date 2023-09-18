@@ -46,6 +46,7 @@
 #include <list>
 
 #include "bot.h"
+#include "Quince.h"
 
 extern QueryServ* QServ;
 extern Zone* zone;
@@ -191,6 +192,26 @@ void QuestManager::say(const char *str, Journal::Options &opts) {
 			opts.journal_mode = Journal::Mode::None;
 		owner->QuestJournalledSay(initiator, str, opts);
 	}
+}
+
+// Quince command
+// npcsay - have an NPC say a string
+
+void QuestManager::npcsay(int npcid, const char *str, Journal::Options &opts)
+{
+	QuestManagerCurrentQuestVars();
+	Mob *mob = entity_list.GetMobByNpcTypeID(npcid);
+
+	if (mob)
+	{
+		// turn off the journal if needed
+		if (!RuleB(NPC, EnableNPCQuestJournal) || initiator == nullptr)
+			opts.journal_mode = Journal::Mode::None;
+
+		owner->QuestJournalledSay(initiator, str, opts);
+
+		entity_list.ChannelMessage(mob, 8, opts.language, str);
+        }
 }
 
 void QuestManager::me(const char *str) {

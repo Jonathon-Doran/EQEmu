@@ -64,6 +64,7 @@ public:
 	//quest functions
 	void echo(int colour, const char *str);
 	void say(const char *str, Journal::Options &opts);
+	void npcsay(int npcid, const char *str, Journal::Options &opts);
 	void me(const char *str);
 	void summonitem(uint32 itemid, int16 charges = -1);
 	EQ::ItemInstance* CreateItem(uint32 item_id, int16 charges = 0, uint32 augment_one = 0, uint32 augment_two = 0, uint32 augment_three = 0, uint32 augment_four = 0, uint32 augment_five = 0, uint32 augment_six = 0, bool attuned = false) const;

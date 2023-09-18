@@ -161,6 +161,11 @@ SET(zone_sources
     zone_event_scheduler.cpp
     zone_reload.cpp
     zoning.cpp
+    Quince.cpp
+    Quince_Clients.cpp
+    Quince_Caches.cpp
+    Quince_Nodes.cpp
+    Quince_Triggers.cpp
 )
 
 SET(zone_headers
@@ -274,6 +279,9 @@ SET(zone_headers
     zonedb.h
     zonedump.h
     zone_reload.h
+    Quince_Events.h
+    Quince.h
+    Quince_Triggers.h
 )
 
 ADD_EXECUTABLE(zone ${zone_sources} ${zone_headers})

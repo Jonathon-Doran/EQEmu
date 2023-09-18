@@ -112,6 +112,19 @@ public:
 		uint32 extra_data,
 		std::vector<std::any> *extra_pointers
 	);
+        virtual int EventQuince(
+		QuestEventID event,
+		uint32 objid, 
+		const char * data, 
+		NPC* npcmob, 
+		EQ::ItemInstance* item_inst, 
+		const SPDat_Spell_Struct* spell, 
+		Mob* mob,
+                uint32 extradata, 
+		bool global, 
+		std::vector<std::any> *extra_pointers,
+		uint32 questID,
+		std::string subroutine);
 
 	virtual bool HasQuestSub(uint32 npcid, QuestEventID evt);
 	virtual bool HasGlobalQuestSub(QuestEventID evt);

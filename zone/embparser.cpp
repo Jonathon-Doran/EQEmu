@@ -31,6 +31,10 @@
 #include <algorithm>
 #include <sstream>
 
+using namespace std;
+#include "Quince.h"
+#include "Quince_Triggers.h"
+
 extern Zone *zone;
 
 #ifdef EMBPERL_XS
@@ -236,6 +240,181 @@ void PerlembParser::ReloadQuests()
 
 	item_quest_status_.clear();
 	spell_quest_status_.clear();
+}
+
+/*
+ * EventQuince
+ *
+ * This is the Quince-specific event handler.  It has two additional parameters:
+ *      package:     The package name
+ *      subroutine:  The subroutine name
+ *
+ * Quince passes in the name of the entry point in the script.  So we do not use
+ * the QuestEventSubroutines.
+ */
+int PerlembParser::EventQuince(
+        QuestEventID event, uint32 objid, const char *data, NPC *npcmob, EQ::ItemInstance *item_inst,
+        const SPDat_Spell_Struct* spell, Mob *mob, uint32 extradata, bool global,
+        std::vector<std::any> *extra_pointers, uint32 questID, std::string subroutine
+)
+{
+	if (!perl) 
+	{
+		QuinceLog("EventQuince: no Perl parser");
+		return 0;
+	}
+
+	if (event >= _LargestEventID) 
+	{
+		QuinceLog("EventQuince: invalid event ID", event);
+		return 0;
+	}
+
+	bool isPlayerQuest = false;
+	bool isGlobalPlayerQuest = false;
+	bool isGlobalNPC = false;
+	bool isBotQuest = false;
+	bool isGlobalBotQuest = false;
+	bool isItemQuest = false;
+	bool isSpellQuest = false;
+
+	std::string package_name = QuinceTriggers::Instance().packageName(questID);
+	const char *sub_name = subroutine.c_str();
+
+	if (QuinceTriggers::Instance().isLoaded(questID))
+	{
+		QuinceLog("EventQuince: quest %d already loaded", questID);
+	}
+	else
+	{
+		// construct relative path to the quest script
+		std::string filename = QuinceTriggers::Instance().questScript(questID);
+
+		std::ostringstream path;
+		path << "quests/Quince/" << filename;
+
+		try
+		{
+			perl -> eval_file(package_name.c_str(), path.str().c_str());
+
+			QuinceLog("EventQuince: quest %d loaded successfully", questID);
+			QuinceTriggers::Instance().markLoaded(questID);
+		}
+		catch (std::string e)
+		{
+			QuinceLog("Error compiling quest file %s : %s",
+				filename.c_str(), e.c_str());
+			return 0;
+		}
+	}
+
+	GetQuestTypes(
+		isPlayerQuest,
+		isGlobalPlayerQuest,
+		isBotQuest,
+		isGlobalBotQuest,
+		isGlobalNPC,
+		isItemQuest,
+		isSpellQuest,
+		event,
+		npcmob,
+		item_inst,
+		mob,
+		global
+	);
+
+#if 0
+	GetQuestPackageName(
+		isPlayerQuest,
+		isGlobalPlayerQuest,
+		isBotQuest,
+		isGlobalBotQuest,
+		isGlobalNPC,
+		isItemQuest,
+		isSpellQuest,
+		package_name,
+		event,
+		objid,
+		data,
+		npcmob,
+		item_inst,
+		global
+	);
+#endif
+
+	int char_id = 0;
+	ExportCharID(package_name, char_id, npcmob, mob);
+
+	if (! perl -> SubExists(package_name.c_str(), sub_name))
+	{
+		QuinceLog("EventQuince: subroutine %s does not exist in package %s",
+			sub_name, package_name.c_str());
+		return 0;
+	}
+
+	/* Check for QGlobal export event enable */
+	if (parse->perl_event_export_settings[event].qglobals) {
+		ExportQGlobals(
+			isPlayerQuest,
+			isGlobalPlayerQuest,
+			isBotQuest,
+			isGlobalBotQuest,
+			isGlobalNPC,
+			isItemQuest,
+			isSpellQuest,
+			package_name,
+			npcmob,
+			mob,
+			char_id
+		);
+	}
+
+	/* Check for Mob export event enable */
+	if (parse->perl_event_export_settings[event].mob) {
+		ExportMobVariables(
+			isPlayerQuest,
+			isGlobalPlayerQuest,
+			isBotQuest,
+			isGlobalBotQuest,
+			isGlobalNPC,
+			isItemQuest,
+			isSpellQuest,
+			package_name,
+			mob,
+			npcmob
+		);
+	}
+
+	/* Check for Zone export event enable */
+	if (parse->perl_event_export_settings[event].zone) {
+		ExportZoneVariables(package_name);
+	}
+
+	/* Check for Item export event enable */
+	if (parse->perl_event_export_settings[event].item) {
+		ExportItemVariables(package_name, mob);
+	}
+
+	/* Check for Event export event enable */
+	if (parse->perl_event_export_settings[event].event_variables) {
+		ExportEventVariables(package_name, event, objid, data, npcmob, item_inst, mob, extradata, extra_pointers);
+	}
+
+	if (isPlayerQuest || isGlobalPlayerQuest) {
+		return SendCommands(package_name.c_str(), sub_name, 0, mob, mob, nullptr, nullptr);
+	} else if (isBotQuest || isGlobalBotQuest) {
+		return SendCommands(package_name.c_str(), sub_name, 0, npcmob, mob, nullptr, nullptr);
+	} else if (isItemQuest) {
+		return SendCommands(package_name.c_str(), sub_name, 0, mob, mob, item_inst, nullptr);
+	} else if (isSpellQuest) {
+		if (mob) {
+			return SendCommands(package_name.c_str(), sub_name, 0, mob, mob, nullptr, spell);
+		} else {
+			return SendCommands(package_name.c_str(), sub_name, 0, npcmob, mob, nullptr, spell);
+		}
+	} else {
+		return SendCommands(package_name.c_str(), sub_name, objid, npcmob, mob, nullptr, nullptr);
+	}
 }
 
 int PerlembParser::EventCommon(

@@ -184,6 +184,7 @@ int command_init(void)
 		command_add("picklock", "Analog for ldon pick lock for the newer clients since we still don't have it working.", AccountStatus::Player, command_picklock) ||
 		command_add("profanity", "Manage censored language.", AccountStatus::GMLeadAdmin, command_profanity) ||
 		command_add("push", "[Back Push] [Up Push] - Lets you do spell push on an NPC", AccountStatus::GMLeadAdmin, command_push) ||
+		command_add("quince", "[client] -- Show Quince information", AccountStatus::GMAdmin, command_quince) ||
 		command_add("raidloot", "[All|GroupLeader|RaidLeader|Selected] - Sets your Raid Loot Type if you have permission to do so.", AccountStatus::Player, command_raidloot) ||
 		command_add("randomfeatures", "Temporarily randomizes the Facial Features of your target", AccountStatus::QuestTroupe, command_randomfeatures) ||
 		command_add("refreshgroup", "Refreshes Group for you or your player target.", AccountStatus::Player, command_refreshgroup) ||
@@ -870,6 +871,7 @@ void command_bot(Client *c, const Seperator *sep)
 #include "gm_commands/picklock.cpp"
 #include "gm_commands/profanity.cpp"
 #include "gm_commands/push.cpp"
+#include "gm_commands/quince.cpp"
 #include "gm_commands/raidloot.cpp"
 #include "gm_commands/randomfeatures.cpp"
 #include "gm_commands/refreshgroup.cpp"
