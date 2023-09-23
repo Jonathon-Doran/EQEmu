@@ -97,7 +97,7 @@ class Quince
 
 		void test_add(Client *c, int node_id);
 		void test_fire(Client *c, int trigger_id);
-		void test_comp(Client *c, int trigger_id);
+		void test_complete(Client *c, int trigger_id);
 
 		void show_selector(Client *c, int quest_id);
 		void send_task(Client *c, int quest_id);
@@ -244,7 +244,7 @@ class QNodeCache
 		bool get_parent_trigger(int node_id, int& trigger_id);
 };
 
-class QTriggerCache
+class QuinceTriggerCache
 {
 	private:
 		Trigger_Map triggers;
@@ -255,7 +255,7 @@ class QTriggerCache
 		Integer_Multimap trigger_owner;	// trigger_id => character_id
 		Integer_Map activated_quest;	// trigger_id => quest_id
 
-		static std::unique_ptr<QTriggerCache> _instance;
+		static std::unique_ptr<QuinceTriggerCache> _instance;
 		Zone_Trigger_Map activation_triggers;
 		ID_List activation_ids;			// trigger ids
 		ID_List polled_triggers;		// polled activation triggers
@@ -263,10 +263,10 @@ class QTriggerCache
 		void remove_trigger_owner(int trigger_id, int character_id);
 		void initialize_trigger(QuinceTrigger *);
 	protected:
-		QTriggerCache();
+		QuinceTriggerCache();
 
 	public:
-		static QTriggerCache& Instance();
+		static QuinceTriggerCache& Instance();
 		void reset();
 
 		inline int num_triggers()		{return triggers.size();}

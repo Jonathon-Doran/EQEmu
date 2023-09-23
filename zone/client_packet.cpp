@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <string.h>
 #include <zlib.h>
 #include "bot.h"
+#include "Quince.h"
 
 #ifdef _WINDOWS
 #define snprintf	_snprintf
@@ -1862,6 +1863,8 @@ void Client::Handle_OP_AcceptNewTask(const EQApplicationPacket *app)
 		return;
 	}
 	AcceptNewTask_Struct *ant = (AcceptNewTask_Struct*)app->pBuffer;
+
+	Quince::Instance().accept_quest(this, ant->task_id, ant->task_master_id);
 
 	if (ant->task_id > 0 && RuleB(TaskSystem, EnableTaskSystem) && task_state)
 	{
@@ -4246,6 +4249,8 @@ void Client::Handle_OP_CancelTask(const EQApplicationPacket *app)
 		return;
 	}
 	CancelTask_Struct *cts = (CancelTask_Struct*)app->pBuffer;
+
+	Quince::Instance().cancel_quest(this, cts -> SequenceNumber);
 
 	if (RuleB(TaskSystem, EnableTaskSystem) && task_state)
 		task_state->CancelTask(this, cts->SequenceNumber, static_cast<TaskType>(cts->type));

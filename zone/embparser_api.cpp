@@ -5345,6 +5345,44 @@ std::string Perl__convert_money_to_string(perl::hash table)
 	return Strings::Money(platinum, gold, silver, copper);
 }
 
+void Perl__npcsay(int npc_id, const char *message)
+{
+	Mob *npc = entity_list.GetMobByNpcTypeID(npc_id);
+	Client *client = quest_manager.GetInitiator();
+
+	Journal::Options journal_opts;
+	journal_opts.speak_mode = Journal::SpeakMode::Say;
+	journal_opts.journal_mode = RuleB(NPC, EnableNPCQuestJournal) ?
+		Journal::Mode::Log2 : Journal::Mode::None;
+	journal_opts.language = 0;
+	journal_opts.message_type = Chat::NPCQuestSay;
+	journal_opts.target_spawn_id = 0;
+
+	if (npc && client)
+	{
+		npc -> QuestJournalledSay(client, message, journal_opts);
+	}
+}
+
+void Perl__npcsay(int npc_id, const char *message, int language)
+{
+	Mob *npc = entity_list.GetMobByNpcTypeID(npc_id);
+	Client *client = quest_manager.GetInitiator();
+
+	Journal::Options journal_opts;
+	journal_opts.speak_mode = Journal::SpeakMode::Say;
+	journal_opts.journal_mode = RuleB(NPC, EnableNPCQuestJournal) ?
+		Journal::Mode::Log2 : Journal::Mode::None;
+	journal_opts.language = language;
+	journal_opts.message_type = Chat::NPCQuestSay;
+	journal_opts.target_spawn_id = 0;
+
+	if (npc && client)
+	{
+		npc -> QuestJournalledSay(client, message, journal_opts);
+	}
+}
+
 void perl_register_quest()
 {
 	perl::interpreter perl(PERL_GET_THX);
@@ -6285,6 +6323,10 @@ void perl_register_quest()
 	package.add("is_current_expansion_ring_of_scale", &Perl__IsCurrentExpansionRingOfScale);
 	package.add("is_current_expansion_the_burning_lands", &Perl__IsCurrentExpansionTheBurningLands);
 	package.add("is_current_expansion_torment_of_velious", &Perl__IsCurrentExpansionTormentOfVelious);
+	// need to provide context to the overload
+	package.add("npcsay", (void(*)(int, const char *))&Perl__npcsay);
+	package.add("npcsay", (void(*)(int, const char *, int))&Perl__npcsay);
+
 
 	/**
 	 * Content flags

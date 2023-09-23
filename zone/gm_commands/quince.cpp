@@ -3,16 +3,26 @@
 
 using namespace std;
 
+void quince_usage(Client *c)
+{
+	c -> Message(Chat::White, "Usage:  #quince client");
+	c -> Message(Chat::White, "        #quince list");
+	c -> Message(Chat::White, "        #quince add quest <quest-id>");
+	c -> Message(Chat::White, "        #quince add node <node-id>");
+	c -> Message(Chat::White, "        #quince fire <trigger-id>");
+	c -> Message(Chat::White, "        #quince complete <trigger-id>");
+}
+
 void command_quince(Client *c, const Seperator *sep)
 {
 	if (!c) {
 		return;
 	} // Crash Suppressant: No client. How did we get here?
 
-	const char *usage_string = "Usage: #quince [client]";
+	const char *usage_string = "Usage: #quince [client][questkk";
 
 	if ((!sep) || (sep->argnum == 0)) {
-		c->Message(Chat::White, usage_string);
+		quince_usage(c);
 		return;
 	}
 
@@ -59,6 +69,9 @@ void command_quince(Client *c, const Seperator *sep)
 				return;
 			}
 		}
+
+		c -> Message(Chat::White, "Usage:  #quince add {quest,node} <id>");
+		return;
 	}
 
 	// "quince client"  --  Show client state
@@ -94,16 +107,43 @@ void command_quince(Client *c, const Seperator *sep)
 				int id = atoi(row[0]);
 				string title = row[1];
 
-				c->Message(Chat::White, "quest %d:  %s", id, title);
+				c->Message(Chat::White, "quest %d:  %s", id, title.c_str());
 			}
 			c -> Message(Chat::White, "%d quests available", results.RowCount());
 			return;
 		}
 
-		c -> Message(Chat::White, "usage:  quince list quests");
+		c -> Message(Chat::White, "Usage:  #quince list quests");
 		return;
 	}
 
-	c->Message(Chat::White, usage_string);
+	// fire <n>
+	if (strcmp(sep->arg[1], "fire") == 0)
+	{
+		if (sep -> IsNumber(2))
+		{
+			int32 trigger_id = atoi(sep->arg[2]);
+			Quince::Instance().test_fire(c, trigger_id);
+			return;
+		}
+
+		c -> Message(Chat::White, "Usage:  #quince fire <trigger_id>");
+		return;
+	}
+
+	if (strcmp(sep->arg[1], "complete") == 0)
+	{
+		if (sep -> IsNumber(2))
+		{
+			int32 trigger_id = atoi(sep->arg[2]);
+			Quince::Instance().test_complete(c, trigger_id);
+			return;
+		}
+
+		c -> Message(Chat::White, "Usage:  #quince complete <trigger_id>");
+		return;
+	}
+
+	quince_usage(c);
 }
 

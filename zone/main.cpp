@@ -85,6 +85,7 @@ extern volatile bool is_zone_loaded;
 #include "../common/events/player_event_logs.h"
 #include "../common/path_manager.h"
 #include "../common/database/database_update.h"
+#include "Quince_Triggers.h"
 
 EntityList  entity_list;
 WorldServer worldserver;
@@ -442,6 +443,8 @@ int main(int argc, char** argv) {
 #ifdef EMBPERL
 	auto perl_parser = new PerlembParser();
 	parse->RegisterQuestInterface(perl_parser, "pl");
+
+	QuinceTriggers::Instance().registerParser(perl_parser);
 
 	/* Load Perl Event Export Settings */
 	parse->LoadPerlEventExportSettings(parse->perl_event_export_settings);

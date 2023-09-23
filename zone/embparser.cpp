@@ -295,9 +295,11 @@ int PerlembParser::EventQuince(
 
 		try
 		{
-			perl -> eval_file(package_name.c_str(), path.str().c_str());
+			int rv = perl -> eval_file(package_name.c_str(), path.str().c_str());
 
 			QuinceLog("EventQuince: quest %d loaded successfully", questID);
+			QuinceLog("EventQuince: file %s, package %s", path.str().c_str(), package_name.c_str());
+			QuinceLog("EventQuince: return value is %d", rv);
 			QuinceTriggers::Instance().markLoaded(questID);
 		}
 		catch (std::string e)

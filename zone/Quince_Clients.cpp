@@ -282,8 +282,7 @@ bool Client_State::start_quest(int root_node)
 			quest_id);
 		active_quests.push_back(quest_id);
 
-		// FIXME:  need to implement
-		// send_task(quest_id);
+		send_task(quest_id);
 	}
 
 	// initally starting at the activation node
@@ -328,7 +327,7 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 	// if no triggers are available, then the node is complete
 
 	ID_List null_triggers;		// would otherwise complete during activation
-	ID_List new_triggers = QTriggerCache::Instance().load_triggers_at_seq(node_id, seq+1,
+	ID_List new_triggers = QuinceTriggerCache::Instance().load_triggers_at_seq(node_id, seq+1,
 		 character_id);
 
 	if (new_triggers.size() > 0)
@@ -344,7 +343,7 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 		{
 			int trigger_id = *iter;
 
-			if (! QTriggerCache::Instance().getType(trigger_id, type))
+			if (! QuinceTriggerCache::Instance().getType(trigger_id, type))
 			{
 				QuinceLog("advance_seq:  unable to get type for trigger %d", trigger_id);
 				continue;
@@ -363,7 +362,7 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 
 			active_triggers.insert(pair<int, int> (node_id, trigger_id));
 
-			if (! QTriggerCache::Instance().init_sat_for_trigger(trigger_id))
+			if (! QuinceTriggerCache::Instance().init_sat_for_trigger(trigger_id))
 			{
 				QuinceLog("activate required node %d, trigger %d",
 					node_id, trigger_id);
@@ -381,7 +380,7 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 
 			// Look up the zone for this trigger (0 = any)
 			int zoneID;
-			if (! QTriggerCache::Instance().get_zone(trigger_id, zoneID))
+			if (! QuinceTriggerCache::Instance().get_zone(trigger_id, zoneID))
 			{
 				QuinceLog("advance_seq:  no zone for trigger");
 				continue;
@@ -411,7 +410,7 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 				QuinceLog("firing null trigger");
 
 				string subroutine;
-				if (! QTriggerCache::Instance().get_subroutine(trigger_id, subroutine))
+				if (! QuinceTriggerCache::Instance().get_subroutine(trigger_id, subroutine))
 				{
 					QuinceLog("advance seq:  no subroutine for trigger");
 					continue;
@@ -426,6 +425,11 @@ void Client_State::advance_seq(int node_id, int trigger_id)
 				// events seem to be going directly to the questparsercollection
 
 				PerlembParser *parse = QuinceTriggers::Instance().getParser();
+				if (parse == NULL)
+				{
+					QuinceLog("advance seq:  no quest parser registered");
+					continue;
+				}
 			
 				parse -> EventQuince(EVENT_NULL, 0, nullptr, client->CastToNPC(), nullptr, nullptr,
 					client, 0, false, nullptr, quest_id, subroutine);
@@ -637,6 +641,21 @@ int Client_State::seq_for_node(int node_id) const
 // mainly on zone-in, otherwise just single activity changes
 void Client_State::send_task(int quest_id)
 {
+	QuinceLog("***** Client_State send quest %d to client *****", quest_id);
+
+	string title;
+	if (! Quince::Instance().get_quest_title(quest_id, title))
+	{
+		QuinceLog("No quest title, abort send_task");
+		return;
+	}
+
+	quest_title[quest_id] = title;
+	quest_desc[quest_id] = string("Assist Farmer Jones");
+	quest_seq[quest_id] = 0;
+
+	QuinceLog("Task description sent for quest");
+	send_task_description(quest_id);
 }
 
 void Client_State::schedule_activity_complete(int quest_id, int trigger_id)
@@ -650,6 +669,75 @@ void Client_State::send_visible_activity(int slot, int trigger)
 // sent once per quest
 void Client_State::send_task_description(int quest_id, bool show_journal)
 {
+	const int bring_up_journal		= 0x00000201;
+	const int no_journal			= 0x00000200;
+	const int xp_reward				= 0x00000100;
+	const int no_xp_reward			= 0x00000000;
+
+	if (quest_desc.find(quest_id) == quest_desc.end())
+	{
+		QuinceLog("quest %d not present", quest_id);
+		client -> Message(Chat::White, "quest %d not present", quest_id);
+		return;
+	}
+
+	const char *desc = quest_desc[quest_id].c_str();
+	const char *title = quest_title[quest_id].c_str();
+	int seq = quest_seq[quest_id];
+
+	int PacketLength = sizeof(TaskDescriptionHeader_Struct) + strlen(title) + 1
+                + sizeof(TaskDescriptionData1_Struct) + strlen(desc) + 1
+                + sizeof(TaskDescriptionData2_Struct)
+                + sizeof(TaskDescriptionTrailer_Struct);
+
+	string RewardText = "Nothing";
+
+	PacketLength += strlen(RewardText.c_str()) + 1;
+
+	char *Ptr;
+	TaskDescriptionHeader_Struct *tdh;
+	TaskDescriptionData1_Struct *tdd1;
+	TaskDescriptionData2_Struct *tdd2;
+	TaskDescriptionTrailer_Struct *tdt;
+
+	EQApplicationPacket *outapp = new EQApplicationPacket(OP_TaskDescription, PacketLength);
+
+	tdh = (TaskDescriptionHeader_Struct *) outapp -> pBuffer;
+	tdh -> SequenceNumber = seq;		// client slot
+	tdh -> TaskID = quest_id;
+	tdh -> open_window = show_journal;
+	tdh -> task_type = 0;
+	tdh -> reward_type = 0;
+
+	Ptr = (char *) tdh + sizeof (TaskDescriptionHeader_Struct);
+	sprintf(Ptr, "%s", title);
+	Ptr += strlen(Ptr) + 1;
+
+	tdd1 = (TaskDescriptionData1_Struct *) Ptr;
+	tdd1 -> Duration = 0;		// unlimited
+	tdd1 -> dur_code = 0x00000000;
+	tdd1 -> StartTime = time(NULL);		// now
+
+	Ptr = (char *) tdd1 + sizeof (TaskDescriptionData1_Struct);
+	sprintf(Ptr, "%s", desc);
+	Ptr += strlen(Ptr) + 1;
+
+	tdd2 =(TaskDescriptionData2_Struct *) Ptr;
+	tdd2 -> has_rewards = 1;
+	tdd2 -> coin_reward = 1000;		// in copper
+	tdd2 -> xp_reward = 0;			// 1 or 0
+	tdd2 -> faction_reward = 0;		// 1 or 0
+
+	Ptr = (char *) tdd2 + sizeof(TaskDescriptionData2_Struct);
+	sprintf(Ptr, "%s", RewardText.c_str());
+	Ptr += strlen(Ptr) + 1;
+
+	tdt = (TaskDescriptionTrailer_Struct *) Ptr;
+	tdt -> Points = 0;
+	tdt -> has_reward_selection = 0;		// no rewards window
+
+	client -> QueuePacket(outapp);
+	safe_delete(outapp);
 }
 
 // act is the slot# for the step (client index)

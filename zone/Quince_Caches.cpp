@@ -162,20 +162,20 @@ QNodeCache::quest_for(int node_id, int& quest_id)
 // Note that triggers have system-unique IDs, so we do not need to
 // know which quest they belong to.
 // ==============================================================
-unique_ptr<QTriggerCache> QTriggerCache::_instance;
+unique_ptr<QuinceTriggerCache> QuinceTriggerCache::_instance;
 
-QTriggerCache&
-QTriggerCache::Instance()
+QuinceTriggerCache&
+QuinceTriggerCache::Instance()
 {
 	if (_instance.get() == NULL)
 	{
-		_instance.reset (new QTriggerCache());
+		_instance.reset (new QuinceTriggerCache());
 	}
 
 	return *_instance;
 }
 
-QTriggerCache::QTriggerCache()
+QuinceTriggerCache::QuinceTriggerCache()
 {
 }
 
@@ -187,7 +187,7 @@ QTriggerCache::QTriggerCache()
 // ==============================================================
 
 ID_List 
-QTriggerCache::load_triggers_at_seq(int node_id, int seq, int character_id)
+QuinceTriggerCache::load_triggers_at_seq(int node_id, int seq, int character_id)
 {
 	QuinceLog("load_triggers_at_seq %d for node %d", seq, node_id);
 
@@ -232,7 +232,7 @@ QTriggerCache::load_triggers_at_seq(int node_id, int seq, int character_id)
 // ==============================================================
 
 void
-QTriggerCache::load_trigger(int trigger_id, int seq, int character_id)
+QuinceTriggerCache::load_trigger(int trigger_id, int seq, int character_id)
 {
 	// first, check to see if the trigger is already cached
 	Integer_Map::iterator iter = ref_counts.find(trigger_id);
@@ -276,7 +276,7 @@ QTriggerCache::load_trigger(int trigger_id, int seq, int character_id)
 // ==============================================================
 
 bool
-QTriggerCache::node_for(int trigger_id, int& node_id)
+QuinceTriggerCache::node_for(int trigger_id, int& node_id)
 {
 	Integer_Map::const_iterator iter = node_ids.find(trigger_id);
 
@@ -293,7 +293,7 @@ QTriggerCache::node_for(int trigger_id, int& node_id)
 // init_sat_for_trigger -- determine if the trigger is initially satisfied
 // ==============================================================
 bool
-QTriggerCache::init_sat_for_trigger(int trigger_id)
+QuinceTriggerCache::init_sat_for_trigger(int trigger_id)
 {
 	Trigger_Map::iterator iter = triggers.find(trigger_id);
 
@@ -313,7 +313,7 @@ QTriggerCache::init_sat_for_trigger(int trigger_id)
 // trigger fires.
 // ==============================================================
 bool
-QTriggerCache::get_subroutine(int trigger_id, string& name)
+QuinceTriggerCache::get_subroutine(int trigger_id, string& name)
 {
 	Trigger_Map::iterator iter = triggers.find(trigger_id);
 
@@ -325,6 +325,37 @@ QTriggerCache::get_subroutine(int trigger_id, string& name)
 	name = iter -> second -> getSubroutine();
 	return true;
 }
+// ==============================================================
+// quest_for -- Return the quest-id for a trigger.
+// ==============================================================
+
+bool
+QuinceTriggerCache::quest_for(int trigger_id, int& quest_id)
+{
+	Integer_Map::const_iterator iter = activated_quest.find(trigger_id);
+	if (iter != activated_quest.end())
+	{
+		quest_id = iter -> second;
+		return true;
+	}
+
+	// now check the node cache
+	int node_id;
+	if (! node_for(trigger_id, node_id))
+	{
+		QuinceLog("TC:  no node for trigger %d", trigger_id);
+		return false;
+	}
+
+	if (! QNodeCache::Instance().quest_for(node_id, quest_id))
+	{
+		QuinceLog("TC: no quest for node %d", node_id);
+		return false;
+	}
+
+	return true;
+}
+
 
 // ==============================================================
 // getType -- Return the type for a trigger.
@@ -335,7 +366,7 @@ QTriggerCache::get_subroutine(int trigger_id, string& name)
 // NULL triggers also fire immediately.
 // ==============================================================
 bool
-QTriggerCache::getType(int trigger_id, QuestEventID& type)
+QuinceTriggerCache::getType(int trigger_id, QuestEventID& type)
 {
 	Trigger_Map::const_iterator iter = triggers.find(trigger_id);
 
@@ -349,7 +380,7 @@ QTriggerCache::getType(int trigger_id, QuestEventID& type)
 }
 
 bool
-QTriggerCache::get_zone(int trigger_id, int& zone)
+QuinceTriggerCache::get_zone(int trigger_id, int& zone)
 {
 	
 	Trigger_Map::const_iterator iter = triggers.find(trigger_id);
